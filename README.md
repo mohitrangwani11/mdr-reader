@@ -85,3 +85,7 @@ npm run build
 
 - **Phase 2:** memory files (backlinks, link graph), then a VS Code extension (webview host).
 - **Backlog:** item-level diffs inside lists (today a changed list shows as removed + added), flagging risky `allowed-tools` in skills, comparing two docs side by side, exporting the focused view, publishing the CLI to npm (`npx mdr`).
+
+## License
+
+[MIT](LICENSE)

@@ -1,6 +1,7 @@
 {
   "name": "mdr",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "A foldable, diff-aware reader for agent markdown files (CLAUDE.md, SKILL.md, plans).",
   "type": "module",
   "bin": {

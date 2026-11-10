@@ -1,6 +1,7 @@
 {
   "name": "@mdr/web",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "Paste edition of mdr: a single self-contained HTML file."
