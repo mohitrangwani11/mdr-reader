@@ -26,8 +26,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run build   # before tests: the server test serves the built client
       - run: npm test
-      - run: npm run build
       - name: Assemble site
         run: |
           mkdir -p _site
