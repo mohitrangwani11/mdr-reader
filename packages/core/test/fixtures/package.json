@@ -1,0 +1,1 @@
+{ "name": "fixture", "scripts": { "lint": "eslint .", "test": "vitest" } }

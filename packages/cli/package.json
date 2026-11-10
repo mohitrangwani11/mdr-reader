@@ -1,0 +1,16 @@
+{
+  "name": "mdr",
+  "version": "0.1.0",
+  "description": "A foldable, diff-aware reader for agent markdown files (CLAUDE.md, SKILL.md, plans).",
+  "type": "module",
+  "bin": {
+    "mdr": "bin/mdr.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "dependencies": {
+    "chokidar": "^6.0.0"
+  }
+}

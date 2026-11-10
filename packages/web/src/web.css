@@ -1,0 +1,62 @@
+/* Paste-edition additions on top of the core reader styles. */
+
+.drop-empty {
+  margin: 10vh auto 0; max-width: 520px; text-align: center; padding: 44px 32px 36px;
+  border: 1.5px dashed var(--border-strong); border-radius: 18px; background: var(--bg-raised);
+}
+.drop-empty h2 { margin: 16px 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -.015em; }
+.drop-empty p { margin: 0 0 18px; color: var(--fg-muted); font-size: 14.5px; }
+.de-key {
+  display: inline-block; font: 600 15px var(--mono); padding: 7px 13px; border-radius: 9px;
+  border: 1px solid var(--border); border-bottom-width: 3px; background: var(--bg); color: var(--fg);
+}
+.de-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 22px; }
+.de-actions .tbtn { height: 36px; padding: 0 14px; }
+.de-actions .tbtn .ic { margin-left: -2px; }
+.de-actions .de-example { border-color: transparent; background: none; color: var(--accent); }
+.de-actions .de-example:hover { background: var(--accent-soft); }
+.de-note { font-size: 12px; color: var(--fg-faint) !important; margin: 0 !important; }
+
+body.dragging #app::after {
+  content: 'Drop .md files to read them'; position: fixed; inset: 10px; z-index: 40; display: grid; place-items: center;
+  border: 2px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--accent-soft) 88%, transparent);
+  font: 600 18px var(--font); color: var(--accent); pointer-events: none;
+}
+
+/* the one "add" dialog: paste text, or drop / choose files */
+.paste-dialog {
+  border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px 18px; width: min(680px, calc(100vw - 24px));
+  background: var(--bg-raised); color: var(--fg); box-shadow: var(--shadow); font: 14px/1.5 var(--font);
+}
+.paste-dialog::backdrop { background: rgba(10, 15, 25, .4); }
+.paste-dialog :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pd-head { display: flex; align-items: center; gap: 8px; }
+.pd-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-x { margin-right: -8px; }
+.pd-hint { margin: 4px 0 14px; font-size: 13px; color: var(--fg-muted); }
+.paste-dialog textarea {
+  display: block; width: 100%; height: min(42vh, 340px); resize: vertical; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg); color: var(--fg); font: 13px/1.6 var(--mono); padding: 12px 14px; outline: none;
+}
+.paste-dialog textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.pd-drop {
+  display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 10px 10px 14px;
+  border: 1.5px dashed var(--border-strong); border-radius: 10px; color: var(--fg-muted); font-size: 13px;
+  transition: border-color .12s, background .12s;
+}
+.pd-drop-ic { color: var(--fg-faint); display: flex; }
+.pd-drop-t { flex: 1; }
+.pd-drop b { font: 600 12.5px var(--mono); color: var(--fg); }
+.paste-dialog.dragging .pd-drop { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.pd-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.pd-key { margin-right: auto; font-size: 12px; color: var(--fg-faint); }
+.pd-key kbd {
+  font: 11px/1 var(--mono); padding: 2px 5px; border: 1px solid var(--border); border-bottom-width: 2px;
+  border-radius: 4px; color: var(--fg-muted); background: var(--bg-raised);
+}
+.paste-dialog .tbtn { height: 34px; padding: 0 14px; }
+.paste-dialog .pd-files { height: 30px; padding: 0 12px; }
+@media (max-width: 520px) {
+  .pd-key { display: none; }
+  .pd-drop { flex-wrap: wrap; }
+}
