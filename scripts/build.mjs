@@ -55,6 +55,32 @@ await mkdir('dist', { recursive: true });
 await writeFile('dist/mdr.html', html);
 console.log(`\n  dist/mdr.html  ${(html.length / 1024).toFixed(1)}kb  (paste edition, self-contained)`);
 
+// VS Code extension: the extension host bundle (CJS, `vscode` provided by the editor) and the webview.
+const vsc = 'packages/vscode';
+await build({
+  entryPoints: [`${vsc}/src/extension.ts`],
+  bundle: true,
+  format: 'cjs',
+  platform: 'node',
+  target: 'node20',
+  external: ['vscode'],
+  minify: !watch,
+  outfile: `${vsc}/dist/extension.cjs`,
+  logLevel: 'info',
+});
+await build({
+  entryPoints: [`${vsc}/src/webview/main.ts`],
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: ['chrome120'],
+  minify: !watch,
+  outfile: `${vsc}/dist/webview.js`,
+  logLevel: 'info',
+});
+await writeFile(`${vsc}/dist/webview.css`, (await readFile('packages/core/src/styles.css', 'utf8')) + '\n' + (await readFile(`${vsc}/src/webview/vscode.css`, 'utf8')));
+await copyFile('LICENSE', `${vsc}/LICENSE`);
+
 if (process.argv.includes('--open-web')) {
   const file = path.resolve('dist/mdr.html');
   const [cmd, args] = process.platform === 'darwin' ? ['open', [file]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', file]] : ['xdg-open', [file]];

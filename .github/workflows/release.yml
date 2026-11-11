@@ -1,0 +1,31 @@
+# On a version tag (v*): build, test, package the VS Code extension and attach it to a GitHub Release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  vsix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - run: node scripts/vsix.mjs
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*.vsix dist/mdr.html \
+            --title "mdr $GITHUB_REF_NAME" --generate-notes \
+            --notes "Install the VS Code extension: download the .vsix below, then run \`code --install-extension mdr-reader-*.vsix\` (or Extensions → … → Install from VSIX…). \`mdr.html\` is the no-install reader."

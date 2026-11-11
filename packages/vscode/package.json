@@ -1,0 +1,313 @@
+{
+  "name": "mdr-reader",
+  "displayName": "mdr — Agent Markdown Reader",
+  "description": "Read CLAUDE.md, AGENTS.md, Copilot instructions, skills and plans as a foldable tree, and see what changed since you last read them. Works with Copilot agent mode.",
+  "version": "0.1.0",
+  "publisher": "mohitrangwani11",
+  "license": "MIT",
+  "private": true,
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mohitrangwani11/mdr-reader"
+  },
+  "homepage": "https://github.com/mohitrangwani11/mdr-reader#readme",
+  "bugs": {
+    "url": "https://github.com/mohitrangwani11/mdr-reader/issues"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Visualization",
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "copilot",
+    "agents",
+    "reader",
+    "diff"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onStartupFinished",
+    "onWebviewPanel:mdr.reader"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mdr",
+          "title": "Agent Files",
+          "icon": "media/mdr.svg"
+        }
+      ]
+    },
+    "views": {
+      "mdr": [
+        {
+          "id": "mdr.files",
+          "name": "Agent Files",
+          "icon": "media/mdr.svg",
+          "contextualTitle": "mdr"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "mdr.files",
+        "contents": "No agent files in this workspace yet: CLAUDE.md, AGENTS.md, Copilot instructions, skills, plans.\n[Open a markdown file in mdr…](command:mdr.openFromDisk)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "mdr.open",
+        "title": "Open reader",
+        "category": "mdr",
+        "icon": {
+          "light": "media/tab-light.svg",
+          "dark": "media/tab-dark.svg"
+        }
+      },
+      {
+        "command": "mdr.openFile",
+        "title": "Open in mdr",
+        "category": "mdr",
+        "icon": {
+          "light": "media/tab-light.svg",
+          "dark": "media/tab-dark.svg"
+        }
+      },
+      {
+        "command": "mdr.openFromDisk",
+        "title": "Open a markdown file…",
+        "category": "mdr"
+      },
+      {
+        "command": "mdr.openChanged",
+        "title": "Open next changed file",
+        "category": "mdr"
+      },
+      {
+        "command": "mdr.editSource",
+        "title": "Edit source",
+        "category": "mdr",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "mdr.refresh",
+        "title": "Refresh",
+        "category": "mdr",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "mdr.markAllRead",
+        "title": "Mark all as read",
+        "category": "mdr",
+        "icon": "$(check-all)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mdr.openFile",
+          "when": "resourceLangId == markdown && activeWebviewPanelId != 'mdr.reader'",
+          "group": "navigation@10"
+        },
+        {
+          "command": "mdr.editSource",
+          "when": "activeWebviewPanelId == 'mdr.reader'",
+          "group": "navigation"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "mdr.openFile",
+          "when": "resourceLangId == markdown",
+          "group": "3_open"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "mdr.openFile",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@20"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "mdr.markAllRead",
+          "when": "view == mdr.files && mdr.hasUnread",
+          "group": "navigation@1"
+        },
+        {
+          "command": "mdr.refresh",
+          "when": "view == mdr.files",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "mdr.openFile",
+          "when": "false"
+        },
+        {
+          "command": "mdr.editSource",
+          "when": "activeWebviewPanelId == 'mdr.reader'"
+        },
+        {
+          "command": "mdr.openChanged",
+          "when": "mdr.hasUnread"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mdr.open",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m"
+      }
+    ],
+    "configuration": {
+      "title": "mdr",
+      "properties": {
+        "mdr.showAllMarkdown": {
+          "type": "boolean",
+          "default": false,
+          "description": "Expand the \"Other\" group (markdown that isn't an agent file) in the Agent files view."
+        },
+        "mdr.statusBar": {
+          "type": "string",
+          "enum": [
+            "changes",
+            "never"
+          ],
+          "enumDescriptions": [
+            "Show a status bar item when an agent file changed since you last read it.",
+            "Never show it."
+          ],
+          "default": "changes",
+          "description": "When to show mdr in the status bar."
+        }
+      }
+    },
+    "languageModelTools": [
+      {
+        "name": "mdr_listAgentFiles",
+        "toolReferenceName": "mdrFiles",
+        "displayName": "mdr: List agent files",
+        "userDescription": "List the agent markdown files in this workspace and which changed since you last read them.",
+        "modelDescription": "Lists the agent markdown files in the user's workspace (CLAUDE.md, AGENTS.md, .github/copilot-instructions.md, *.instructions.md, *.prompt.md, skills, plans, specs, memory), grouped by kind, and flags files that changed since the user last read them in the mdr reader. Use it to find a file before calling the other mdr tools, or when the user asks which instruction or plan files exist or changed.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(book)",
+        "tags": [
+          "mdr",
+          "markdown",
+          "instructions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "mdr_openInReader",
+        "toolReferenceName": "mdrOpen",
+        "displayName": "mdr: Open in reader",
+        "userDescription": "Open a markdown file in the mdr reader tab, optionally at a section.",
+        "modelDescription": "Opens a markdown file in the mdr reader, a foldable, diff-aware view in a VS Code editor tab, for the user to read. If the file changed since the user last read it, the changes are highlighted and the reader jumps to the first one, unless a section is given. Use it when the user asks to open, show, view or review a plan, spec, instructions file or skill, or after you edit one and want the user to review it.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(book)",
+        "tags": [
+          "mdr",
+          "markdown"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Workspace-relative path (e.g. \"docs/PLAN.md\") or just a file name (e.g. \"CLAUDE.md\")."
+            },
+            "section": {
+              "type": "string",
+              "description": "Optional heading title to scroll to (e.g. \"Testing\")."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "mdr_changesSinceRead",
+        "toolReferenceName": "mdrChanges",
+        "displayName": "mdr: Changes since last read",
+        "userDescription": "Summarise what changed in a markdown file since you last read it in mdr.",
+        "modelDescription": "Returns a section-by-section summary of what changed in a markdown file since the user last read it in the mdr reader: added, changed and removed sections by heading, with short excerpts of added and removed text. Use it when the user asks what changed in an instructions file, plan or spec, or before summarising edits for them. Does not mark the file as read.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(diff)",
+        "tags": [
+          "mdr",
+          "markdown",
+          "diff"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Workspace-relative path or file name."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "name": "mdr_outline",
+        "toolReferenceName": "mdrOutline",
+        "displayName": "mdr: Outline and rules",
+        "userDescription": "Get a markdown file's section outline with token counts, checklist progress and rules.",
+        "modelDescription": "Returns the heading outline of a markdown file with an estimated token count per section, checklist progress (done/total) and the number of rule keywords (MUST, NEVER, ALWAYS, IMPORTANT, DO NOT…). With rulesOnly, returns just the rule lines grouped by section. Use it to answer what an instructions file requires, which sections are largest, or how far a plan's checklist has progressed, without reading the whole file.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(list-tree)",
+        "tags": [
+          "mdr",
+          "markdown",
+          "instructions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Workspace-relative path or file name."
+            },
+            "rulesOnly": {
+              "type": "boolean",
+              "description": "Return only the lines containing rule keywords."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/vscode": "1.100.0"
+  }
+}

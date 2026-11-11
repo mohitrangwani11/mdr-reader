@@ -1,12 +1,10 @@
 import http from 'node:http';
-import { readFile, realpath, stat } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
-import os from 'node:os';
 import path from 'node:path';
-import { watch, type FSWatcher } from 'chokidar';
-import { discover, classify, displayName, isIgnoredDir, isMarkdown, GROUP_ORDER } from './discover.ts';
+import { readFile } from 'node:fs/promises';
+import { watch } from 'chokidar';
+import { createWorkspace, NotFound, type WatchFactory } from './workspace.ts';
 import { Store } from './store.ts';
-import type { FileGroup } from '@mdr/core';
 
 export interface ServerOptions {
   /** Absolute path to a file or folder. */
@@ -24,104 +22,24 @@ export interface RunningServer {
   close(): Promise<void>;
 }
 
-const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 const MAX_BODY_BYTES = 10 * 1024 * 1024;
 
+/** File watching for the CLI: chokidar on the root (or the single file). */
+export const chokidarWatch: WatchFactory = (t) => {
+  const w = watch(t.singleFile ?? t.root, { ignoreInitial: true, ignored: (p: string) => t.ignored(p) });
+  w.on('add', (p) => t.onFs('add', p)).on('change', (p) => t.onFs('change', p)).on('unlink', (p) => t.onFs('unlink', p));
+  w.on('error', () => {});
+  return { add: (abs) => void w.add(abs), close: () => w.close() };
+};
+
 export async function startServer(opts: ServerOptions): Promise<RunningServer> {
-  const targetReal = await realpath(opts.target);
-  const isDir = (await stat(targetReal)).isDirectory();
-  const root = isDir ? targetReal : path.dirname(targetReal);
-  const singleFile = isDir ? null : targetReal;
-  const store = opts.store ?? new Store();
+  const ws = await createWorkspace({ target: opts.target, store: opts.store, watch: chokidarWatch });
   const token = randomBytes(16).toString('hex');
-  const importAllowed = new Set<string>();
   const clients = new Set<http.ServerResponse>();
-
-  /* ---- path identity ------------------------------------------------------ */
-  const inRoot = (abs: string) => {
-    const rel = path.relative(root, abs);
-    return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
-  };
-  const toId = (abs: string) => (inRoot(abs) ? path.relative(root, abs).split(path.sep).join('/') : abs);
-  const fromId = (id: string) => path.resolve(root, id);
-
-  /** Resolve a client-supplied id to a real path the client may read, or null. */
-  async function readable(id: string | null): Promise<string | null> {
-    if (!id) return null;
-    let abs: string;
-    try {
-      abs = await realpath(fromId(id));
-    } catch {
-      return null;
-    }
-    if (importAllowed.has(abs)) return abs;
-    if (singleFile) return abs === singleFile ? abs : null;
-    return inRoot(abs) && isMarkdown(abs) ? abs : null;
-  }
-
-  /* ---- watching ----------------------------------------------------------- */
-  const broadcast = (msg: object) => {
+  ws.onEvent((msg) => {
     const line = `data: ${JSON.stringify(msg)}\n\n`;
     for (const c of clients) c.write(line);
-  };
-  const watcher: FSWatcher = watch(singleFile ?? root, {
-    ignoreInitial: true,
-    ignored: (p: string) => {
-      if (singleFile || !inRoot(p)) return false;
-      return path.relative(root, p).split(path.sep).some((seg) => seg && isIgnoredDir(seg));
-    },
   });
-  const onFs = (kind: 'add' | 'change' | 'unlink') => (p: string) => {
-    if (!isMarkdown(p) && !importAllowed.has(p)) return;
-    if (kind !== 'unlink') broadcast({ type: 'change', path: toId(p) });
-    if (kind !== 'change') broadcast({ type: 'files' });
-  };
-  watcher.on('add', onFs('add')).on('change', onFs('change')).on('unlink', onFs('unlink'));
-  watcher.on('error', () => {});
-
-  /* ---- api ------------------------------------------------------------------ */
-  async function listFiles(): Promise<FileGroup[]> {
-    const found = singleFile
-      ? [{ path: toId(singleFile), name: displayName(toId(singleFile)), group: classify(toId(singleFile)) }]
-      : await discover(root);
-    const withUnread = await Promise.all(
-      found.map(async (f, i) => {
-        if (i > 500) return f;
-        const abs = fromId(f.path);
-        const snap = await store.getSnapshot(abs);
-        if (snap == null) return f;
-        const cur = await readFile(abs, 'utf8').catch(() => null);
-        return { ...f, unread: cur != null && cur !== snap };
-      }),
-    );
-    return GROUP_ORDER.map((name) => ({ name, files: withUnread.filter((f) => f.group === name) })).filter((g) => g.files.length);
-  }
-
-  async function resolveImport(fromIdStr: string | null, ref: string | null) {
-    const fromAbs = await readable(fromIdStr);
-    if (!fromAbs || !ref) return null;
-    // Only follow imports that the source file actually contains.
-    const fromText = await readFile(fromAbs, 'utf8');
-    if (!fromText.includes('@' + ref)) return null;
-    const expanded = ref.startsWith('~/') ? path.join(os.homedir(), ref.slice(2)) : ref;
-    let target: string;
-    try {
-      target = await realpath(path.resolve(path.dirname(fromAbs), expanded));
-      const st = await stat(target);
-      if (!st.isFile() || st.size > MAX_IMPORT_BYTES) return null;
-    } catch {
-      return null;
-    }
-    const text = await readFile(target, 'utf8');
-    if (text.includes('\u0000')) return null; // binary
-    if (!importAllowed.has(target)) {
-      importAllowed.add(target);
-      if (singleFile || !inRoot(target)) watcher.add(target);
-    }
-    return { path: toId(target), text };
-  }
-
-  const stateKey = (k: string) => `${root}|${k}`;
 
   /* ---- http -------------------------------------------------------------------- */
   const server = http.createServer(async (req, res) => {
@@ -133,7 +51,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       if (url.pathname === '/' || url.pathname === '/index.html') {
         if (url.searchParams.get('t') !== token) return send(res, 403, 'Missing or wrong token. Use the URL printed by mdr.');
         const html = await readFile(path.join(opts.publicDir, 'index.html'), 'utf8');
-        const config = { token, mode: singleFile ? 'file' : 'folder', showAll: opts.showAll, root: path.basename(root) };
+        const config = { token, mode: ws.mode, showAll: opts.showAll, root: path.basename(ws.root) };
         return send(res, 200, html.replace('/*MDR_CONFIG*/', `window.MDR_CONFIG=${JSON.stringify(config).replace(/</g, '\\u003c')};`), 'text/html; charset=utf-8');
       }
       if (url.pathname === '/app.js' || url.pathname === '/app.css') {
@@ -155,38 +73,31 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           return;
         }
         case 'GET /api/files':
-          return json(res, await listFiles());
-        case 'GET /api/file': {
-          const abs = await readable(p);
-          if (!abs) return send(res, 404, 'Not found');
-          return send(res, 200, await readFile(abs, 'utf8'), 'text/plain; charset=utf-8');
-        }
+          return json(res, await ws.listFiles());
+        case 'GET /api/file':
+          return send(res, 200, await ws.readFile(p), 'text/plain; charset=utf-8');
         case 'GET /api/import':
-          return json(res, await resolveImport(url.searchParams.get('from'), url.searchParams.get('ref')));
-        case 'GET /api/baseline': {
-          const abs = await readable(p);
-          if (!abs) return send(res, 404, 'Not found');
-          return json(res, { text: await store.getSnapshot(abs) });
-        }
+          return json(res, await ws.resolveImport(url.searchParams.get('from'), url.searchParams.get('ref')));
+        case 'GET /api/baseline':
+          return json(res, { text: await ws.getBaseline(p) });
         case 'POST /api/read': {
-          const abs = await readable(p);
-          if (!abs) return send(res, 404, 'Not found');
-          await store.setSnapshot(abs, await body(req));
+          if (!(await ws.readable(p))) return send(res, 404, 'Not found');
+          await ws.markRead(p, await body(req));
           return json(res, { ok: true });
         }
         case 'GET /api/state':
-          return json(res, { value: (await store.getState(stateKey(url.searchParams.get('k') ?? ''))) ?? null });
+          return json(res, { value: (await ws.getState(url.searchParams.get('k') ?? '')) ?? null });
         case 'POST /api/state': {
           const k = url.searchParams.get('k');
           if (!k) return send(res, 400, 'Missing key');
-          await store.setState(stateKey(k), JSON.parse(await body(req)));
+          await ws.setState(k, JSON.parse(await body(req)));
           return json(res, { ok: true });
         }
         default:
           return send(res, 404, 'Not found');
       }
     } catch (e) {
-      if (!res.headersSent) send(res, 500, (e as Error).message);
+      if (!res.headersSent) send(res, e instanceof NotFound ? 404 : 500, e instanceof NotFound ? 'Not found' : (e as Error).message);
     }
   });
 
@@ -202,8 +113,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     async close() {
       clearInterval(heartbeat);
       for (const c of clients) c.end();
-      await watcher.close();
-      await store.flush();
+      await ws.close();
       await new Promise<void>((r) => server.close(() => r()));
     },
   };

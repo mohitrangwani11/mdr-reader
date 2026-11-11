@@ -1,0 +1,50 @@
+/*
+ * The reader inside VS Code: take the surface colours from the active VS Code theme so the tab
+ * looks native in any theme. The reader keeps its own reading typography and its semantic
+ * colours (added / changed / removed / rules), which are tuned per light and dark.
+ */
+:root[data-host='vscode'][data-theme] {
+  --bg: var(--vscode-editor-background);
+  --bg-side: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  --bg-raised: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --bg-code: var(--vscode-textCodeBlock-background, color-mix(in srgb, var(--fg) 7%, var(--bg)));
+  --bg-hover: var(--vscode-list-hoverBackground, color-mix(in srgb, var(--fg) 8%, var(--bg)));
+  --fg: var(--vscode-editor-foreground);
+  --fg-muted: var(--vscode-descriptionForeground, color-mix(in srgb, var(--fg) 70%, var(--bg)));
+  --fg-faint: color-mix(in srgb, var(--fg-muted) 72%, var(--bg));
+  --border: var(--vscode-panel-border, var(--vscode-widget-border, color-mix(in srgb, var(--fg) 14%, var(--bg))));
+  --border-strong: color-mix(in srgb, var(--fg) 24%, var(--bg));
+  --accent: var(--vscode-textLink-foreground);
+  --accent-fg: var(--vscode-button-foreground);
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
+  --search: var(--vscode-editor-findMatchHighlightBackground, #ffe06688);
+  --shadow: 0 4px 20px var(--vscode-widget-shadow, rgba(0, 0, 0, .3));
+  --font: var(--vscode-font-family);
+}
+
+/* Focus rings use the theme's focus colour, like the rest of VS Code. */
+:root[data-host='vscode'] .mdr :focus-visible { outline-color: var(--vscode-focusBorder, var(--accent)); }
+
+/* The only filled button is a selected state here (levels, rules); keep its text readable. */
+:root[data-host='vscode'] .tbtn.primary {
+  background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent;
+}
+:root[data-host='vscode'] .tbtn.primary:hover { background: var(--vscode-button-hoverBackground, var(--vscode-button-background)); }
+
+/* Inputs look like VS Code inputs. */
+:root[data-host='vscode'] .search {
+  background: var(--vscode-input-background); border-color: var(--vscode-input-border, var(--border)); color: var(--vscode-input-foreground);
+}
+
+/* High contrast themes: solid borders instead of tints. */
+body.vscode-high-contrast, body.vscode-high-contrast-light {
+  --border: var(--vscode-contrastBorder);
+  --border-strong: var(--vscode-contrastBorder);
+}
+
+/* VS Code's default webview styles pad the body and let it grow with content; the reader
+   manages its own scroll panes, so pin it to the viewport. */
+html[data-host='vscode'], html[data-host='vscode'] body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+html[data-host='vscode'] #app { height: 100vh; }
+html[data-host='vscode'] body { font-size: 14px; }

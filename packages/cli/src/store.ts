@@ -65,8 +65,10 @@ export class Store {
   }
 }
 
+let seq = 0;
 async function atomicWrite(p: string, data: string) {
-  const tmp = `${p}.${process.pid}.tmp`;
+  // Unique per write: two overlapping flushes must not rename the same temp file.
+  const tmp = `${p}.${process.pid}.${++seq}.tmp`;
   await writeFile(tmp, data);
   await rename(tmp, p);
 }

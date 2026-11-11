@@ -71,7 +71,9 @@ body { font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
 .muted { color: var(--fg-muted); }
 
 /* ---- shell ------------------------------------------------------------- */
-.mdr-shell { display: grid; grid-template-columns: 280px 1fr; height: 100%; }
+.mdr-shell { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: minmax(0, 1fr); height: 100%; }
+/* Panes scroll themselves; never let content stretch the row (or the page would scroll instead). */
+.mdr-side, .mdr-main { min-height: 0; }
 .mdr-shell.side-closed { grid-template-columns: 0 1fr; }
 .mdr-shell.side-closed .mdr-side { visibility: hidden; }
 .mdr-side {

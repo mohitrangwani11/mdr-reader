@@ -91,6 +91,11 @@ export interface Reader {
   toast(message: string): void;
   /** Re-check which host actions apply to the open file. */
   updateActions(): void;
+  /**
+   * Scroll to a section, by id or (case-insensitive) title. With no target, go to the first change.
+   * Returns false when nothing matched.
+   */
+  reveal(target?: string): boolean;
   destroy(): void;
 }
 
@@ -129,6 +134,17 @@ export interface ReaderOptions {
   actions?: ReaderAction[];
   /** Shown in place of the document when the workspace has no files. */
   emptyState?: HTMLElement;
+  /**
+   * The host owns the theme (e.g. VS Code): the reader follows it and hides its own theme controls.
+   */
+  theme?: { get(): 'light' | 'dark'; onChange(cb: () => void): void };
+  /**
+   * A link in the document that the reader doesn't handle itself (anything but #anchors,
+   * relative .md links, imports and wiki links). Return true to take it over.
+   */
+  onLink?(href: string, from: string | null): boolean;
+  /** Called after a file is opened or switched to. */
+  onOpen?(path: string): void;
 }
 
 export async function mountReader(el: HTMLElement, host: Host, options: ReaderOptions = {}): Promise<Reader> {
@@ -281,6 +297,7 @@ export async function mountReader(el: HTMLElement, host: Host, options: ReaderOp
     if (switching) void host.state.set('last', p);
     if (host.mode === 'folder') history.replaceState(null, '', `#f=${encodeURIComponent(p)}`);
     renderFiles();
+    if (switching) options.onOpen?.(p);
   }
 
   // ---- rendering -------------------------------------------------------------
@@ -754,6 +771,7 @@ export async function mountReader(el: HTMLElement, host: Host, options: ReaderOp
         ev.preventDefault();
         return void openRelative(href.replace(/#.*$/, ''));
       }
+      if (options.onLink?.(href, path)) return void ev.preventDefault();
     }
     const copyBtn = t.closest<HTMLElement>('.sec-copy');
     if (copyBtn) return void copySection(copyBtn.closest<HTMLElement>('.sec')!.dataset.id!);
@@ -877,7 +895,7 @@ export async function mountReader(el: HTMLElement, host: Host, options: ReaderOp
     else if (k === 'N') nextChange(-1);
     else if (k === 'm') void markRead();
     else if (k === 'o') shell.classList.toggle('side-closed');
-    else if (k === 't') void cycleTheme();
+    else if (k === 't' && !options.theme) void cycleTheme();
     else if (k === '?') helpEl.hidden ? showHelp() : hideHelp();
     else {
       const a = actions.find((x) => x.key === k && actionVisible(x));
@@ -968,6 +986,10 @@ export async function mountReader(el: HTMLElement, host: Host, options: ReaderOp
         .map((a) => `<dt><kbd>${esc(a.key!)}</kbd></dt><dd>${esc(a.label)}</dd>`)
         .join(''),
     );
+  if (options.theme) {
+    helpEl.querySelector('dl')!.innerHTML = helpEl.querySelector('dl')!.innerHTML.replace(/<dt><kbd>t<\/kbd><\/dt><dd>[^<]*<\/dd>/, '');
+    options.theme.onChange(() => showTheme());
+  }
   function actionVisible(a: ReaderAction): boolean {
     if ((a.needsFile || a.showFor) && !path) return false;
     return !a.showFor || a.showFor(path!);
@@ -980,7 +1002,7 @@ export async function mountReader(el: HTMLElement, host: Host, options: ReaderOp
 
   // ---- theme ----------------------------------------------------------------------------------
   function showTheme() {
-    applyTheme(theme);
+    applyTheme(options.theme ? options.theme.get() : theme);
     for (const b of menuEl.querySelectorAll<HTMLElement>('[data-theme-opt]')) b.setAttribute('aria-pressed', String(b.dataset.themeOpt === theme));
   }
   async function setTheme(t: Theme, announce = true) {
@@ -1004,9 +1026,12 @@ export async function mountReader(el: HTMLElement, host: Host, options: ReaderOp
     menuEl.innerHTML =
       (bar ? `<div class="m-group m-compact">${bar}</div>` : '') +
       (rest ? `<div class="m-group">${rest}</div>` : '') +
-      `<div class="m-group"><div class="m-theme" role="group" aria-label="Theme"><span>Theme</span>` +
-      THEMES.map((t) => `<button type="button" role="menuitemradio" data-theme-opt="${t}" title="${t === 'auto' ? 'Follow system' : t[0].toUpperCase() + t.slice(1)}" aria-label="${t}">${THEME_ICON[t]}</button>`).join('') +
-      `</div>` +
+      `<div class="m-group">` +
+      (options.theme
+        ? ''
+        : `<div class="m-theme" role="group" aria-label="Theme"><span>Theme</span>` +
+          THEMES.map((t) => `<button type="button" role="menuitemradio" data-theme-opt="${t}" title="${t === 'auto' ? 'Follow system' : t[0].toUpperCase() + t.slice(1)}" aria-label="${t}">${THEME_ICON[t]}</button>`).join('') +
+          `</div>`) +
       `<button type="button" role="menuitem" class="m-item m-help">${icons.keyboard}<span>Keyboard shortcuts</span><kbd>?</kbd></button></div>`;
     showTheme();
   }
@@ -1055,6 +1080,23 @@ export async function mountReader(el: HTMLElement, host: Host, options: ReaderOp
     currentPath: () => path,
     toast,
     updateActions: () => updateActions(),
+    reveal(target) {
+      if (!doc) return false;
+      if (target == null || target === '') {
+        if (!diff) return false;
+        changeIdx = -1;
+        nextChange(1);
+        return true;
+      }
+      const q = target.trim().replace(/^#+\s*/, '').toLowerCase();
+      const sec =
+        doc.byId.get(target) ??
+        doc.sections.find((s) => s.title.toLowerCase() === q) ??
+        doc.sections.find((s) => s.title.toLowerCase().includes(q));
+      if (!sec) return false;
+      reveal(sec.id);
+      return true;
+    },
     destroy() {
       off();
       document.removeEventListener('keydown', onKey);

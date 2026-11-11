@@ -7,4 +7,5 @@ export { RULE_KEYWORDS, RULE_RE, countRules } from './rules.ts';
 export { parseMarkdown, normalizeImportRef } from './parse.ts';
 export { mountReader, type Reader, type ReaderAction, type ReaderOptions, type Theme, applyTheme } from './app.ts';
 export { classifyText, nameFromText } from './classify.ts';
+export { classify, displayName, isIgnoredDir, isMarkdown, GROUP_ORDER } from './paths.ts';
 export { icons, type IconName } from './icons.ts';

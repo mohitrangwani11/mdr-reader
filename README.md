@@ -16,6 +16,20 @@ Or open **`dist/mdr.html`** in any browser: double-click it, send it to someone,
 
 To build it: `npm install && npm run web` (builds and opens `dist/mdr.html`; `dist/` is not committed).
 
+## VS Code extension
+
+**Install:** download `mdr-reader-<version>.vsix` from the [latest release](https://github.com/mohitrangwani11/mdr-reader/releases/latest), then run `code --install-extension mdr-reader-<version>.vsix` (or in VS Code: Extensions → ⋯ → Install from VSIX…).
+
+![mdr in VS Code](docs/vscode-reader.png)
+
+- **The mdr icon in the activity bar** opens **Agent Files**, the workspace's agent files grouped by kind. A count badge and amber dots show what changed since you last read it.
+- **Click a file** to open the reader in an editor tab, landing on the first change. It follows your VS Code theme.
+- **Other ways in:** **Open in mdr** on any markdown file (editor title bar, or right-click), `⌘⌥M` / `Ctrl+Alt+M`, and a status bar item when something changed.
+- **GitHub Copilot agent mode:** read-only tools `#mdrFiles`, `#mdrOpen`, `#mdrChanges` and `#mdrOutline`. Ask "what changed in CLAUDE.md since I last read it?" or "open the plan in mdr".
+- Last-read snapshots are shared with the CLI (`~/.mdr`).
+
+To build it yourself: `npm run vsix`, which writes `dist/mdr-reader-<version>.vsix`.
+
 ## Live mode (CLI)
 
 For files that agents keep rewriting: it watches the disk and updates as they change.
@@ -42,7 +56,7 @@ Options: `--port <n>` (default 4711), `--all` (expand "Other markdown"), `--no-o
 - **Token estimates** per section (outline) and for the whole file (top bar). This is a rough estimate (~4 characters per token).
 - **@imports** (`@docs/testing.md`) expand inline. Cycles are detected and nesting stops at 5 levels.
 - **Live reload with diff since last read:** added, changed and removed blocks are highlighted. Folded sections still show a change dot. Press `n` for the next change and `m` to mark the file as read.
-- **Folder mode** groups files into Instructions, Skills, Commands & agents, Plans & specs, Memory and Other, with an unread dot on each changed file.
+- **Folder mode** groups files into Instructions, Skills, Commands & agents, Plans & specs, Memory and Other, with an unread dot on each changed file. GitHub Copilot's files are recognised too (`.github/copilot-instructions.md`, `*.instructions.md`, `*.prompt.md`, `*.chatmode.md`, `*.agent.md`).
 - **Token weight:** each outline row has a bar for its share of the file. The section that dominates the budget is amber. The top bar shows tokens *visible now* / whole file, so you know what you'd be sending.
 - Fold, focus and open-import state are remembered per file. **Theme:** in the ⋯ menu, or `t` to cycle Auto (follows the OS), Light and Dark. Works at widget size (~400px wide).
 
@@ -67,9 +81,10 @@ State lives in `~/.mdr` (last-read snapshots plus view state). Set `MDR_HOME` to
 packages/core   the reader: parse → section tree → render → interactions. No disk access.
 packages/cli    Live mode host: discovery, file watching (chokidar), HTTP + SSE on 127.0.0.1, ~/.mdr store
 packages/web    Paste edition host: docs in localStorage, paste / drop / open, share links → dist/mdr.html
+packages/vscode VS Code host: Agent Files view, reader webview (postMessage RPC), Copilot agent tools
 ```
 
-The `Host` interface (`packages/core/src/host.ts`) is the only seam between the reader and the outside world. The VS Code extension will be one more host with the same core.
+The `Host` interface (`packages/core/src/host.ts`) is the only seam between the reader and the outside world. The VS Code extension is one more host with the same core. It reuses the CLI's workspace layer (`packages/cli/src/workspace.ts`) with VS Code's file watcher.
 
 Security: the server binds to 127.0.0.1 only and rejects foreign `Host` headers. The API needs a per-run token. It serves only markdown inside the opened folder, plus files that an open file explicitly `@imports`.
 
@@ -83,7 +98,7 @@ npm run build
 
 ## Roadmap
 
-- **Phase 2:** memory files (backlinks, link graph), then a VS Code extension (webview host).
+- **Next:** memory files (backlinks, link graph), and publishing the extension to the VS Code Marketplace and Open VSX.
 - **Backlog:** item-level diffs inside lists (today a changed list shows as removed + added), flagging risky `allowed-tools` in skills, comparing two docs side by side, exporting the focused view, publishing the CLI to npm (`npx mdr`).
 
 ## License
