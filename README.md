@@ -2,7 +2,57 @@
 
 A read-only reader for the markdown files agents live on: `CLAUDE.md`, `AGENTS.md`, `SKILL.md`, slash commands, plans and specs. It turns a file into a **foldable tree** so you can read only the parts you care about, and shows **what changed since you last read it**, which helps when an agent rewrites the file while you're away.
 
-## Quick start (no install)
+![mdr in VS Code](docs/vscode-reader.png)
+
+## Get started
+
+Pick the way that fits how you work. They all show files the same way.
+
+| You want to… | Use | Start |
+|---|---|---|
+| Try it right now, or read a file someone sent you | **Web page** | Open https://mohitrangwani11.github.io/mdr-reader/ and paste or drop a `.md` file. Nothing to install. |
+| Read your project's agent files while you code | **VS Code extension** | Download the `.vsix` from the [latest release](https://github.com/mohitrangwani11/mdr-reader/releases/latest), then `code --install-extension mdr-reader-<version>.vsix`. Click the mdr icon in the activity bar. |
+| Watch files live while an agent edits them, from the terminal | **CLI** | See [Live mode](#live-mode-cli) below. |
+
+## How to use it
+
+A first read of a `CLAUDE.md` (or any agent file) takes about a minute:
+
+1. **Open the file.** On the web page, paste it (⌘V / Ctrl+V) or drop it on the page. In VS Code, click it in **Agent Files**, or press `⌘⌥M` / `Ctrl+Alt+M` on an open markdown file.
+2. **Get the outline.** Press `1` to fold everything to top-level sections, so the file reads like a table of contents. The outline on the left shows how many tokens each section costs, and the heaviest one is amber.
+3. **Open only what you need.** Click a heading to unfold it. Press `/` to filter sections by a word. Press `f` to focus on one section and hide the rest (`Esc` brings everything back).
+4. **See what the agent is told to do.** Press `r` to show only the rules: the `MUST`, `NEVER`, `ALWAYS` and `IMPORTANT` lines.
+5. **Come back later and see what changed.** When the file changes (an agent rewrote it, or a teammate edited it), the changes are highlighted: added in green, changed in amber, removed in red and struck through. Press `n` to jump from one change to the next.
+6. **Mark it read.** Press `m` when you're done. The next time you open it, you'll only see what changed after that.
+7. **Send a section back to the agent.** Press `c` to copy the current section as markdown and paste it into your agent with "fix only this part". On the web page, **Share** copies a link that contains the whole doc.
+
+Press `?` anytime to see every shortcut.
+
+### Keyboard shortcuts
+
+| Key | Does |
+|---|---|
+| `1`–`6` / `0` | Fold to that heading level / unfold everything |
+| `/` | Filter sections |
+| `f` / `Esc` | Focus the current section / show everything again |
+| `r` | Rules only |
+| `n` / `N` | Next / previous change |
+| `m` | Mark as read |
+| `c` | Copy the current section as markdown |
+| `o` | Show or hide the file sidebar |
+| `t` | Theme: auto / light / dark (the VS Code tab follows your VS Code theme instead) |
+| `e` | Edit the source beside the reader (VS Code) |
+| `u` / `v` | Reload a linked file / paste a new version (web page) |
+| `?` | All shortcuts |
+
+### Bringing it to your team
+
+- **Send the link.** The web page needs no install or account, so https://mohitrangwani11.github.io/mdr-reader/ is the easiest way to start. Docs stay in each person's browser.
+- **Share a doc, not a file.** **Share** on the web page copies a link with the document inside it, so a reviewer can open a plan or spec in mdr with one click.
+- **Point to it from your project.** Add a line to your project's README or `CLAUDE.md`, for example: *"To read the agent files, use [mdr](https://github.com/mohitrangwani11/mdr-reader)."*
+- **Install the extension for the team.** Post the `.vsix` link from the [latest release](https://github.com/mohitrangwani11/mdr-reader/releases/latest) with the one-line install command above.
+
+## Web page (no install)
 
 **Use it online:** https://mohitrangwani11.github.io/mdr-reader/ (rebuilt from `main` on every push). Everything stays in your browser; nothing is uploaded.
 
@@ -18,9 +68,7 @@ To build it: `npm install && npm run web` (builds and opens `dist/mdr.html`; `di
 
 ## VS Code extension
 
-**Install:** download `mdr-reader-<version>.vsix` from the [latest release](https://github.com/mohitrangwani11/mdr-reader/releases/latest), then run `code --install-extension mdr-reader-<version>.vsix` (or in VS Code: Extensions → ⋯ → Install from VSIX…).
-
-![mdr in VS Code](docs/vscode-reader.png)
+**Install:** download `mdr-reader-<version>.vsix` from the [latest release](https://github.com/mohitrangwani11/mdr-reader/releases/latest), then run `code --install-extension mdr-reader-<version>.vsix` (or in VS Code: Extensions → ⋯ → Install from VSIX…). Reload VS Code afterwards.
 
 - **The mdr icon in the activity bar** opens **Agent Files**, the workspace's agent files grouped by kind. A count badge and amber dots show what changed since you last read it.
 - **Click a file** to open the reader in an editor tab, landing on the first change. It follows your VS Code theme.
@@ -34,13 +82,23 @@ To build it yourself: `npm run vsix`, which writes `dist/mdr-reader-<version>.vs
 
 For files that agents keep rewriting: it watches the disk and updates as they change.
 
+It isn't on npm yet, so install it from this repo (needs Node 20+):
+
 ```sh
-npm run build
-npm run mdr -- path/to/CLAUDE.md     # one file
-npm run mdr -- path/to/project       # a folder: auto-discovers agent files
+git clone https://github.com/mohitrangwani11/mdr-reader.git
+cd mdr-reader
+npm install && npm run build
+npm link -w packages/cli             # adds a global `mdr` command
 ```
 
-To get a global `mdr` command: `npm link -w packages/cli`, then `mdr .`
+Then, from any project:
+
+```sh
+mdr .                  # a folder: finds the agent files and opens the reader in your browser
+mdr path/to/CLAUDE.md  # one file
+```
+
+Without `npm link`, run it from the repo with `npm run mdr -- path/to/project`.
 
 Options: `--port <n>` (default 4711), `--all` (expand "Other markdown"), `--no-open`.
 
